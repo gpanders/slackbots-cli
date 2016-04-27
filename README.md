@@ -28,5 +28,5 @@ Example:
 
 `./slackbots --bot ghost --channel general`
 
-Get your Slack API web token from [here](http://api.slack.com/web) and
-put it in `config.json`.
+Get your Slack API web token from [here](https://api.slack.com/docs/oauth-test-tokens)
+and put it in `config.json`.

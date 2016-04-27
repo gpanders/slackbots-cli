@@ -94,6 +94,8 @@ rl.on('line', line => {
                         }
                         rl.prompt();
                     }
+                } else {
+                    printHelp();
                 }
             } else if (_line.length > 0 && (_line[0] === 'get' || _line[0] === 'list' || _line[0] === 'show')) {
                 if (_line.length > 1 && _line[1] === 'bots') {
