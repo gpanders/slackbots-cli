@@ -2,6 +2,7 @@
 
 ## Usage
 
+    npm install
     ./slackbots --bot <botname> --channel <channel>
 
 Where `<botname>` is the name of a bot that has a corresponding 
