@@ -14,38 +14,37 @@ let args = parseArgs(process.argv.slice(2));
 let botName = args.bot;
 let channel = args.channel;
 
-if (!botName || !channel) {
-    console.log('Usage: slackbots --bot <bot> --channel <channel>');
-    process.exit(1);
-}
-
 let botConfig = null;
-try {
-    botConfig = require(`./${config.bots_path}/${botName}`);
-} catch(err) {
-    console.error(`No config file found for bot ${botName}.`);
-    process.exit(1);
-}
+if (botName) {
+    try {
+        botConfig = require(`${config.bots_path}/${botName}`);
+    } catch(err) {
+        console.error(`No config file found for bot ${botName}.`);
+        process.exit(1);
+    }
 
-if (!botConfig) {
-    console.error(`Failed to load config file for bot ${botName}.`);
-    process.exit(1);
-}
+    if (!botConfig) {
+        console.error(`Failed to load config file for bot ${botName}.`);
+        process.exit(1);
+    }
 
-if (!botConfig.name) {
-    console.error('Bot config missing required \'name\' attribute!'); 
-    process.exit(1);
+    if (!botConfig.name) {
+        console.error('Bot config missing required \'name\' attribute!'); 
+        process.exit(1);
+    }
 }
 
 let bot = new SlackBot({
     token: config.token,
-    name: botConfig.name
+    name: botConfig && botConfig.name
 });
 
 let rl = readline.createInterface(process.stdin, process.stdout);
 
 function updatePrompt() {
-    rl.setPrompt(`${botName} [${channel}]> `);
+    let _botName = (botName || 'none');
+    let _channel = (channel || 'none');
+    rl.setPrompt(`${_botName} [${_channel}]> `);
 }
 
 function printHelp() {
@@ -62,13 +61,15 @@ function printHelp() {
 updatePrompt();
 
 rl.on('line', line => {
-    if (line === 'quit' || line === 'exit') {
-        rl.close();
+    if (!line) {
+        rl.prompt();
     } else {
         if (line.startsWith('!')) {
             // special commands
             var _line = line.substr(1).split(' ');
-            if (_line.length > 0 && (_line[0] === 'set' || _line[0] === 'use')) {
+            if (_line.length > 0 && (_line[0] === 'quit' || _line[0] === 'exit')) {
+                rl.close();
+            } else if (_line.length > 0 && (_line[0] === 'set' || _line[0] === 'use')) {
                 if (_line.length > 1 && _line[1] === 'channel') {
                     if (_line.length > 2) {
                         channel = _line[2];
@@ -80,7 +81,7 @@ rl.on('line', line => {
                     if (_line.length > 2) {
                         let tryBotName = _line[2];
                         try {
-                            botConfig = require(`./${config.bots_path}/${tryBotName}`);
+                            botConfig = require(`${config.bots_path}/${tryBotName}`);
                             bot = new SlackBot({
                                 token: config.token,
                                 name: botConfig.name
@@ -94,14 +95,14 @@ rl.on('line', line => {
                         rl.prompt();
                     }
                 }
-            } else if (_line.length > 0 && (_line[0] === 'get' || _line[0] === 'list')) {
+            } else if (_line.length > 0 && (_line[0] === 'get' || _line[0] === 'list' || _line[0] === 'show')) {
                 if (_line.length > 1 && _line[1] === 'bots') {
-                    fs.readdir(`./${config.bots_path}`, (err, files) => {
+                    fs.readdir(`${config.bots_path}`, (err, files) => {
                         if (err) {
                             console.error(err);
                         } else {
                             console.log('\nAvailable bots:\n');
-                            files.filter(f => !f.startsWith('_')).forEach(file => {
+                            files.filter(f => !f.startsWith('_') && f.endsWith('.json')).forEach(file => {
                                 let b = path.basename(file, '.json');
                                 let active = b === botName;
                                 console.log(b + (active ? ' (*)' : ''));
@@ -150,14 +151,30 @@ rl.on('line', line => {
                 printHelp();
             }
         } else {
-            bot.postTo(channel, line, botConfig);
+            if (botConfig && channel) {
+                bot.postTo(channel, line, botConfig);
+            } else {
+                if (!botConfig) {
+                    console.log('\nYou must select a bot to send messages as!');
+                    console.log('\nUse `!get bots` to retrieve a list of available bots.');
+                    console.log('\nUse `!set bot <botname>` to select a bot.');
+                    console.log('');
+                } else if (!channel) {
+                    console.log('\nYou must select a channel to send to!');
+                    console.log('\nUse `!get channels` to retrieve a list of channels.');
+                    console.log('\nUse `!set channel <channel>` to change channel.');
+                    console.log('');
+                }
+            }
             rl.prompt();
         }
     }
 }).on('close', () => process.exit(0));
 
 bot.on('start', () => {
-    console.log(`${botName} is online!`);
+    if (botName) {
+        console.log(`${botName} is online!`);
+    }
     rl.prompt();
 });
 

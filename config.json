@@ -1,4 +1,4 @@
 {
     "token": "YOUR-SLACK-API-WEB-TOKEN",
-    "bots_path": "bots"
+    "bots_path": "./bots"
 }
