@@ -1,3 +1,6 @@
+bots/*.json
+!bots/_template.json
+
 # Logs
 logs
 *.log

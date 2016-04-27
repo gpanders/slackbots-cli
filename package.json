@@ -1,0 +1,25 @@
+{
+  "name": "slackbots-cli",
+  "version": "1.0.0",
+  "description": "slackbots command line interface",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ganders",
+  "license": "MIT",
+  "dependencies": {
+    "minimist": "^1.2.0",
+    "readline": "^1.3.0",
+    "slackbots": "^0.5.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gpanders/slackbots-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gpanders/slackbots-cli/issues"
+  },
+  "homepage": "https://github.com/gpanders/slackbots-cli#readme"
+}

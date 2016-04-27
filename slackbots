@@ -1,0 +1,163 @@
+#!/usr/bin/env node
+'use strict';
+
+const SlackBot = require('slackbots');
+const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
+const parseArgs = require('minimist');
+
+const config = require('./config');
+
+let args = parseArgs(process.argv.slice(2));
+
+let botName = args.bot;
+let channel = args.channel;
+
+if (!botName || !channel) {
+    console.log('Usage: slackbots --bot <bot> --channel <channel>');
+    process.exit(1);
+}
+
+let botConfig = null;
+try {
+    botConfig = require(`./${config.bots_path}/${botName}`);
+} catch(err) {
+    console.error(`No config file found for bot ${botName}.`);
+    process.exit(1);
+}
+
+if (!botConfig) {
+    console.error(`Failed to load config file for bot ${botName}.`);
+    process.exit(1);
+}
+
+if (!botConfig.name) {
+    console.error('Bot config missing required \'name\' attribute!'); 
+    process.exit(1);
+}
+
+let bot = new SlackBot({
+    token: config.token,
+    name: botConfig.name
+});
+
+let rl = readline.createInterface(process.stdin, process.stdout);
+
+function updatePrompt() {
+    rl.setPrompt(`${botName} [${channel}]> `);
+}
+
+function printHelp() {
+    console.log('All commands below must be preceded by a !\n');
+    console.log('help:                              Print this dialog');
+    console.log('get [users|channels]:              Print a list of users, channels, and groups you can send messages to');
+    console.log('get bots:                          Print a list of available bots configured in your bots directory');
+    console.log('set channel <user or channel>:     Send messages to <user or channel>');
+    console.log('set bot <botname>:                 Send messages as bot <botname>');
+    console.log('\n');
+    rl.prompt();
+}
+
+updatePrompt();
+
+rl.on('line', line => {
+    if (line === 'quit' || line === 'exit') {
+        rl.close();
+    } else {
+        if (line.startsWith('!')) {
+            // special commands
+            var _line = line.substr(1).split(' ');
+            if (_line.length > 0 && (_line[0] === 'set' || _line[0] === 'use')) {
+                if (_line.length > 1 && _line[1] === 'channel') {
+                    if (_line.length > 2) {
+                        channel = _line[2];
+                        updatePrompt();
+                        console.log(`Sending messages to ${channel}.`);
+                        rl.prompt();
+                    }
+                } else if (_line.length > 1 && _line[1] === 'bot') {
+                    if (_line.length > 2) {
+                        let tryBotName = _line[2];
+                        try {
+                            botConfig = require(`./${config.bots_path}/${tryBotName}`);
+                            bot = new SlackBot({
+                                token: config.token,
+                                name: botConfig.name
+                            });
+                            botName = tryBotName;
+                            updatePrompt();
+                            console.log(`Sending messages as ${botName}.`);
+                        } catch(err) {
+                            console.log(`Bot '${tryBotName}' not found.`);
+                        }
+                        rl.prompt();
+                    }
+                }
+            } else if (_line.length > 0 && (_line[0] === 'get' || _line[0] === 'list')) {
+                if (_line.length > 1 && _line[1] === 'bots') {
+                    fs.readdir(`./${config.bots_path}`, (err, files) => {
+                        if (err) {
+                            console.error(err);
+                        } else {
+                            console.log('\nAvailable bots:\n');
+                            files.filter(f => !f.startsWith('_')).forEach(file => {
+                                let b = path.basename(file, '.json');
+                                let active = b === botName;
+                                console.log(b + (active ? ' (*)' : ''));
+                            });
+                            console.log('\n(*) = current bot');
+                            console.log('\nUse `!set bot <botname>` to change bot.\n');
+                            rl.prompt(); // async callback so we have to do this again
+                        }
+                    });
+                } else if (_line.length > 1 && _line[1] === 'channels') {
+                    Promise.all([bot.getChannels(), bot.getGroups()])
+                        .then(data => {
+                            let channels = data[0].channels;
+                            let groups = data[1].groups;
+                            console.log('\nAvailable channels and groups:\n');
+                            channels.filter(c => c['is_member']).forEach(c => {
+                                let active = c.name === channel;
+                                console.log(c.name + (active ? ' (*)' : ''));
+                            });
+                            groups.filter(g => g['is_open'] && !g['is_mpim']).forEach(g => {
+                                let active = g.name === channel;
+                                console.log(g.name + (active ? ' (*)' : ''));
+                            });
+                            console.log('\n(*) = current channel');
+                            console.log('\nTo view a list of users, use `!get users`.');
+                            console.log('\nUse `!set channel <channel>` to change channel.\n');
+                            rl.prompt();
+                        });
+                } else if (_line.length > 1 && _line[1] === 'users') {
+                    bot.getUsers().then(data => {
+                        let users = data.members;
+                        console.log('\nAvailable users:\n');
+                        users.filter(u => !u['is_deleted'] && !u['is_bot']).forEach(u => {
+                            let active = u.name === channel;
+                            console.log(u.name + (active ? ' (*)' : ''));
+                        });
+                        console.log('\n(*) = current channel');
+                        console.log('\nTo view a list of channels and groups, use `!get channels`.');
+                        console.log('\nUse `!set channel <user>` to change channel.\n');
+                        rl.prompt();
+                    });
+                } else {
+                    printHelp();
+                }
+            } else { 
+                printHelp();
+            }
+        } else {
+            bot.postTo(channel, line, botConfig);
+            rl.prompt();
+        }
+    }
+}).on('close', () => process.exit(0));
+
+bot.on('start', () => {
+    console.log(`${botName} is online!`);
+    rl.prompt();
+});
+
