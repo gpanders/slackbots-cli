@@ -54,6 +54,7 @@ function printHelp() {
     console.log('get bots:                          Print a list of available bots configured in your bots directory');
     console.log('set channel <user or channel>:     Send messages to <user or channel>');
     console.log('set bot <botname>:                 Send messages as bot <botname>');
+    console.log('quit:                              Exit the slackbots terminal');
     console.log('\n');
     rl.prompt();
 }
