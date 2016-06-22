@@ -105,13 +105,16 @@ rl.on('line', line => {
                             console.error(err);
                         } else {
                             console.log('\nAvailable bots:\n');
+
                             files.filter(f => !f.startsWith('_') && f.endsWith('.json')).forEach(file => {
                                 let b = path.basename(file, '.json');
                                 let active = b === botName;
                                 console.log(b + (active ? ' (*)' : ''));
                             });
+
                             console.log('\n(*) = current bot');
                             console.log('\nUse `!set bot <botname>` to change bot.\n');
+
                             rl.prompt(); // async callback so we have to do this again
                         }
                     });
@@ -120,31 +123,39 @@ rl.on('line', line => {
                         .then(data => {
                             let channels = data[0].channels;
                             let groups = data[1].groups;
+
                             console.log('\nAvailable channels and groups:\n');
-                            channels.filter(c => c['is_member']).forEach(c => {
+
+                            channels.forEach(c => {
                                 let active = c.name === channel;
                                 console.log(c.name + (active ? ' (*)' : ''));
                             });
+
                             groups.filter(g => g['is_open'] && !g['is_mpim']).forEach(g => {
                                 let active = g.name === channel;
                                 console.log(g.name + (active ? ' (*)' : ''));
                             });
+
                             console.log('\n(*) = current channel');
                             console.log('\nTo view a list of users, use `!get users`.');
                             console.log('\nUse `!set channel <channel>` to change channel.\n');
+
                             rl.prompt();
                         });
                 } else if (_line.length > 1 && _line[1] === 'users') {
                     bot.getUsers().then(data => {
                         let users = data.members;
                         console.log('\nAvailable users:\n');
+
                         users.filter(u => !u['is_deleted'] && !u['is_bot']).forEach(u => {
                             let active = u.name === channel;
                             console.log(u.name + (active ? ' (*)' : ''));
                         });
+
                         console.log('\n(*) = current channel');
                         console.log('\nTo view a list of channels and groups, use `!get channels`.');
                         console.log('\nUse `!set channel <user>` to change channel.\n');
+
                         rl.prompt();
                     });
                 } else {
